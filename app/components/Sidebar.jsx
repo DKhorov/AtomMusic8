@@ -722,14 +722,7 @@ export default function Sidebar() {
                             transition={{ duration: 0.28, delay: itemDelay(0), ease: EASE_OUT }}
                             style={{ marginLeft: 'auto', pointerEvents: isExpanded ? 'auto' : 'none' }}
                         >
-                            <IconButton
-                                size="small"
-                                aria-label="Настройки сайта"
-                                onClick={(e) => { e.stopPropagation(); router.push('/settings'); }}
-                                sx={{ color: 'rgba(255,255,255,0.5)', bgcolor: 'transparent', '&:active': { color: '#fff' } }}
-                            >
-                                <SettingsRoundedIcon sx={{ fontSize: 20 }} />
-                            </IconButton>
+
                         </motion.div>
                     </Box>
 
