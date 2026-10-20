@@ -680,11 +680,30 @@ export default function Sidebar() {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pl: '7px', pr: 1, mb: 1.5, flexShrink: 0 }}>
                         <Box
                             sx={{
-                                width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
-                                animationPlayState: isPlaying ? 'running' : 'paused',
+                                width: 36,
+                                height: 36,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
                             }}
                         >
-                            <CoverImage src="https://atomglide.com/1.png" />
+                            <Box
+                                component="img"
+                                src="https://music.atomglide.com/7.png"
+                                alt="cover"
+                                sx={{
+                                    width: 25,
+                                    height: 25,
+                                    display: 'block',
+                                    animation: 'spin 8s linear infinite',
+                                    animationPlayState: isPlaying ? 'running' : 'paused',
+                                    '@keyframes spin': {
+                                        '0%': { transform: 'rotate(0deg)' },
+                                        '100%': { transform: 'rotate(360deg)' },
+                                    },
+                                }}
+                            />
                         </Box>
                         <motion.div
                             initial={false}

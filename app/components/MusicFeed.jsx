@@ -375,10 +375,12 @@ export default function MusicFeed() {
         if (index === lastIndex.current) return;
         const track = list[index];
         if (!track) return;
+        // Prevent loop: if this track is already currentTrack, don't call playTrackNow again
+        if (currentTrack?.id === track.id && isPlaying) return;
         lastIndex.current = index;
         playTrackNow(track);
         applyPendingSeek();
-    }, [index, unlocked, list, playTrackNow, applyPendingSeek]);
+    }, [index, unlocked, list, currentTrack?.id, isPlaying, playTrackNow, applyPendingSeek]);
 
     useEffect(() => {
         const onKey = (e) => {

@@ -17,11 +17,19 @@ export default function LoginPage() {
     const [busy, setBusy] = useState(false);
 
     const submit = async (e) => {
-        e.preventDefault();
-        if (busy || !identifier.trim() || !password) {
+        // Предотвращаем стандартную браузерную перезагрузку страницы
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        if (busy) return;
+
+        if (!identifier.trim() || !password) {
             setError('Укажите логин и пароль');
             return;
         }
+
         setBusy(true);
         setError('');
         try {
@@ -64,6 +72,7 @@ export default function LoginPage() {
         >
             <Box sx={{ width: '100%', maxWidth: 360 }}>
                 <Button
+                    type="button"
                     onClick={() => router.push('/')}
                     startIcon={<ArrowBackRoundedIcon />}
                     sx={{
@@ -79,6 +88,7 @@ export default function LoginPage() {
                 <Box
                     component="form"
                     onSubmit={submit}
+                    noValidate
                     sx={{
                         bgcolor: '#1c1c20',
                         border: '1px solid rgba(255,255,255,0.08)',
@@ -132,8 +142,9 @@ export default function LoginPage() {
                         <Typography sx={{ color: '#ff6b6b', fontSize: '13px' }}>{error}</Typography>
                     ) : null}
 
+                    {/* Кнопка с type="submit" БЕЗ onClick */}
                     <Button
-                        onClick={submit}
+                        type="submit"
                         variant="contained"
                         disabled={busy}
                         disableElevation

@@ -1,3 +1,4 @@
+// Product Name: NextJS App Product Version: 1.0 Product Type: Component Language: JavaScript File Name: src/components/AllTracksSection.jsx Author: Dmitry Khorov Company Name: AtomGlide Labs Date last update: 2026-10-20
 "use client";
 import { useState } from 'react';
 import Box from '@mui/material/Box';
@@ -5,14 +6,71 @@ import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Pagination from '@mui/material/Pagination';
 import PaginationItem from '@mui/material/PaginationItem';
-import { PlayArrowRoundedIcon, GraphicEqRoundedIcon, FavoriteRoundedIcon, FavoriteBorderRoundedIcon, AddRoundedIcon, PaginationPrevIcon, PaginationNextIcon } from '../icons';
+import { PlayArrowRoundedIcon, GraphicEqRoundedIcon, AddRoundedIcon, PaginationPrevIcon, PaginationNextIcon } from '../icons';
 import TrackCover from '../TrackCover';
 import QueueClearDialog from '../QueueClearDialog';
 import { useMusic } from '../../context/MusicContext';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
+import { PixelHeartIcon } from '../PixelCover';
 
 const PER_PAGE = 10;
+
+function PixelFavoriteButton({ isFavorite, onClick }) {
+    const [animate, setAnimate] = useState(false);
+
+    const handleClick = (e) => {
+        setAnimate(true);
+        setTimeout(() => setAnimate(false), 450);
+        onClick(e);
+    };
+
+    return (
+        <Box
+            component="button"
+            onClick={handleClick}
+            sx={{
+                position: 'absolute',
+                bottom: 2,
+                right: 2,
+                background: 'none',
+                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                outline: 'none',
+                p: 0,
+                transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                '&:hover': {
+                    transform: 'scale(1.25)',
+                },
+                '&:active': {
+                    transform: 'scale(0.9)',
+                },
+                '@keyframes heartPulse': {
+                    '0%': { transform: 'scale(1)' },
+                    '30%': { transform: 'scale(1.35)' },
+                    '60%': { transform: 'scale(0.85)' },
+                    '100%': { transform: 'scale(1)' },
+                }
+            }}
+        >
+            <Box
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    animation: animate ? 'heartPulse 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275)' : 'none',
+                    filter: isFavorite ? 'drop-shadow(0px 0px 6px #ff4f7b)' : 'drop-shadow(0px 0px 3px rgba(0,0,0,0.8))',
+                    transition: 'filter 0.3s ease',
+                }}
+            >
+                <PixelHeartIcon isFavorite={isFavorite} size={18} />
+            </Box>
+        </Box>
+    );
+}
 
 export default function AllTracksSection({ title }) {
     const { tracks, queue, playTrackNow, addToQueue, favoriteIds, toggleFavorite, currentTrack, isPlaying } = useMusic();
@@ -35,7 +93,7 @@ export default function AllTracksSection({ title }) {
     };
 
     const confirmReplaceQueue = () => {
-        playTrackNow(pendingTrack);
+        if (pendingTrack) playTrackNow(pendingTrack);
         setPendingTrack(null);
     };
 
@@ -54,7 +112,7 @@ export default function AllTracksSection({ title }) {
         <Box sx={{ mb: 4, px: { xs: 2, sm: 4 } }}>
             <Typography sx={{ color: '#a0a0a0', fontSize: '14px', mb: 2 }}>{title}</Typography>
 
-            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                 {slice.map((track, i) => {
                     const globalIdx = (safePage - 1) * PER_PAGE + i;
                     const isCurrent = currentTrack?.id === track.id;
@@ -65,8 +123,13 @@ export default function AllTracksSection({ title }) {
                             key={`${track.id}-${globalIdx}`}
                             onClick={() => handlePlayNow(track)}
                             sx={{
-                                display: 'flex', alignItems: 'center', gap: 2,
-                                px: 2, py: 1, borderRadius: '10px', cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 2,
+                                px: 2,
+                                py: 1,
+                                borderRadius: '10px',
+                                cursor: 'pointer',
                                 bgcolor: isCurrent ? 'rgba(255,255,255,0.06)' : 'transparent',
                                 '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' },
                                 '&:hover .row-actions': { opacity: 1 },
@@ -84,12 +147,20 @@ export default function AllTracksSection({ title }) {
 
                             <Box
                                 sx={{
-                                    position: 'relative', width: 44, height: 44,
-                                    borderRadius: '8px', overflow: 'hidden',
-                                    flexShrink: 0, bgcolor: '#1e1e1e',
+                                    position: 'relative',
+                                    width: 44,
+                                    height: 44,
+                                    borderRadius: '8px',
+                                    overflow: 'hidden',
+                                    flexShrink: 0,
+                                    bgcolor: '#1e1e1e',
                                 }}
                             >
                                 <TrackCover src={track.cover} alt="" sizes="44px" />
+                                <PixelFavoriteButton
+                                    isFavorite={isFav}
+                                    onClick={(e) => handleHeart(e, track)}
+                                />
                             </Box>
 
                             <Box sx={{ minWidth: 0, flex: 1 }}>
@@ -106,25 +177,19 @@ export default function AllTracksSection({ title }) {
                                 title={track.album || 'Single'}
                                 sx={{
                                     display: { xs: 'none', md: 'block' },
-                                    width: 180, flexShrink: 0,
-                                    color: '#8a8a8a', fontSize: '13px',
-                                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                    width: 180,
+                                    flexShrink: 0,
+                                    color: '#8a8a8a',
+                                    fontSize: '13px',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
                                 }}
                             >
                                 {track.album || 'Single'}
                             </Typography>
 
-                            <Box className="row-actions" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0, transition: 'opacity 0.2s' }}>
-                                <IconButton
-                                    size="small"
-                                    aria-label={isFav ? 'Убрать из избранного' : 'Добавить в избранное'}
-                                    title={isFav ? 'Убрать из избранного' : 'Добавить в избранное'}
-                                    onClick={(e) => handleHeart(e, track)}
-                                >
-                                    {isFav
-                                        ? <FavoriteRoundedIcon sx={{ color: '#ff4f7b', fontSize: 19 }} />
-                                        : <FavoriteBorderRoundedIcon sx={{ color: '#7a7a7a', fontSize: 19, '&:hover': { color: '#fff' } }} />}
-                                </IconButton>
+                            <Box className="row-actions" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0, opacity: { xs: 1, sm: 0 }, transition: 'opacity 0.2s' }}>
                                 {settings.queue !== false && (
                                     <IconButton
                                         size="small"

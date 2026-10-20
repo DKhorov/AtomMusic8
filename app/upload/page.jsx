@@ -95,7 +95,9 @@ function parseFilename(filename) {
 }
 
 export default function UploadPage() {
-    const { isAuthed, requestLogin } = useAuth();
+    const { isAuthed, loading, requestLogin } = useAuth();
+    const [mounted, setMounted] = useState(false);
+
     const [dragActive, setDragActive] = useState(false);
     const [tracks, setTracks] = useState([]);
     const [albumCover, setAlbumCover] = useState(null);
@@ -121,9 +123,26 @@ export default function UploadPage() {
     const showSnack = (message, severity = "info") => setSnackbar({ open: true, message, severity });
     const closeSnack = () => setSnackbar((prev) => ({ ...prev, open: false }));
 
+    // Фиксируем факт монтирования в браузере
     useEffect(() => {
-        if (!isAuthed) requestLogin();
-    }, [isAuthed, requestLogin]);
+        setMounted(true);
+    }, []);
+
+    // Безопасная проверка авторизации БЕЗ мгновенного выбрасывания
+    useEffect(() => {
+        if (!mounted || loading) return;
+
+        // Проверяем наличие токена напрямую
+        const hasToken = typeof window !== "undefined" && (
+            Boolean(localStorage.getItem("accessToken")) ||
+            Boolean(localStorage.getItem("refreshToken"))
+        );
+
+        // Редиректим только если загрузка завершена, токенов точно нет и пользователь не авторизован
+        if (!isAuthed && !hasToken && requestLogin) {
+            requestLogin();
+        }
+    }, [isAuthed, loading, mounted, requestLogin]);
 
     const loadAudioMetadata = (file) => {
         return new Promise((resolve) => {
@@ -318,7 +337,7 @@ export default function UploadPage() {
 
     const handleUpload = async () => {
         if (!isAuthed) {
-            requestLogin();
+            if (requestLogin) requestLogin();
             return;
         }
         if (tracks.length === 0) {
@@ -436,6 +455,16 @@ export default function UploadPage() {
         showSnack("Форма очищена", "info");
     };
 
+    // Если данные еще инициализируются
+    if (!mounted || loading) {
+        return (
+            <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh", color: "#fff" }}>
+                <Typography color="text.secondary">Проверка авторизации...</Typography>
+            </Box>
+        );
+    }
+
+    // Если не авторизован после полной проверки
     if (!isAuthed) {
         return (
             <Box
@@ -471,7 +500,7 @@ export default function UploadPage() {
                     <Button
                         fullWidth
                         variant="contained"
-                        onClick={() => requestLogin()}
+                        onClick={() => requestLogin && requestLogin()}
                         sx={{
                             bgcolor: "#fff",
                             color: "#000",

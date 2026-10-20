@@ -1,11 +1,14 @@
-import axios from 'axios';
+/*
+ * AtomGlide Labs - API Client Module
+ * File: axios.js
+ */
 
-const PROD_API_URL = 'https://atomglide.of.by';
+import axios from 'axios';
 
 function resolveBaseURL() {
     const fromEnv = process.env.NEXT_PUBLIC_API_URL;
     if (fromEnv) return `${fromEnv}/api`;
-    return `${PROD_API_URL}/api`;
+    return '/api';
 }
 
 export const api = axios.create({
@@ -43,29 +46,50 @@ function migrateLegacyTokens() {
 
 migrateLegacyTokens();
 
+// Предотвращаем одновременные параллельные запросы на refresh
+let refreshPromise = null;
+
 export async function refreshAccessToken() {
     if (typeof window === 'undefined') return null;
 
     const refreshToken = localStorage.getItem('refreshToken');
     if (!refreshToken) return null;
 
-    try {
-        const base = resolveBaseURL();
-        const res = await axios.post(`${base}/auth/refresh`, { refreshToken });
-        if (res.status === 200) {
-            const { accessToken, refreshToken: newRefreshToken } = res.data;
-            localStorage.setItem('accessToken', accessToken);
-            localStorage.setItem('refreshToken', newRefreshToken);
-            return accessToken;
-        }
-    } catch {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        if (typeof window !== 'undefined') {
-            window.location.href = '/login';
-        }
+    if (refreshPromise) {
+        return refreshPromise;
     }
-    return null;
+
+    refreshPromise = (async () => {
+        try {
+            const base = resolveBaseURL();
+            const res = await axios.post(`${base}/auth/refresh`, { refreshToken });
+            if (res.status === 200) {
+                const { accessToken, refreshToken: newRefreshToken } = res.data;
+                localStorage.setItem('accessToken', accessToken);
+                if (newRefreshToken) {
+                    localStorage.setItem('refreshToken', newRefreshToken);
+                }
+                return accessToken;
+            }
+        } catch (err) {
+            // Очищаем невалидные токены
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+
+            // ВАЖНО: Редиректим на /login ТОЛЬКО если мы сейчас НЕ на странице логина или регистрации
+            if (typeof window !== 'undefined') {
+                const currentPath = window.location.pathname;
+                if (currentPath !== '/login' && currentPath !== '/register') {
+                    window.location.href = '/login';
+                }
+            }
+            return null;
+        } finally {
+            refreshPromise = null;
+        }
+    })();
+
+    return refreshPromise;
 }
 
 let refreshInterval = null;
@@ -73,7 +97,9 @@ let refreshInterval = null;
 export function startTokenAutoRefresh() {
     if (refreshInterval) clearInterval(refreshInterval);
     const FOUR_AND_A_HALF_MINUTES = 4.5 * 60 * 1000;
-    refreshInterval = setInterval(() => { refreshAccessToken(); }, FOUR_AND_A_HALF_MINUTES);
+    refreshInterval = setInterval(() => {
+        refreshAccessToken();
+    }, FOUR_AND_A_HALF_MINUTES);
 }
 
 export function stopTokenAutoRefresh() {
@@ -87,12 +113,19 @@ api.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        if (!originalRequest) return Promise.reject(error);
+
+        const requestUrl = String(originalRequest.url || '');
+        const isAuthRequest = requestUrl.includes('/auth/login') ||
+            requestUrl.includes('/auth/refresh') ||
+            requestUrl.includes('/auth/register');
+
+        // Не пытаемся обновлять токен, если 401 вернул сам запрос логина или рефреша
+        if (error.response?.status === 401 && !originalRequest._retry && !isAuthRequest) {
             originalRequest._retry = true;
             const newToken = await refreshAccessToken();
             if (newToken) {
                 originalRequest.headers.Authorization = `Bearer ${newToken}`;
-                originalRequest.baseURL = resolveBaseURL();
                 return api(originalRequest);
             }
         }

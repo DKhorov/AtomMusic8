@@ -1,9 +1,13 @@
+// Product Name: NextJS App Product Version: 1.0 Product Type: Component Language: JavaScript File Name: src/components/SectionGrid.jsx Author: User Company Name: N/A Date last update: 2026-10-20
 "use client";
 import { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
-import { PlayArrowRoundedIcon, AddRoundedIcon } from '../icons';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import Button from '@mui/material/Button';
+import { PlayArrowRoundedIcon, AddRoundedIcon, PlaylistPlayRoundedIcon } from '../icons';
 import TrackCover from '../TrackCover';
 import { PixelHeartIcon } from '../PixelCover';
 import QueueClearDialog from '../QueueClearDialog';
@@ -13,8 +17,8 @@ import { api } from '../../lib/axios';
 import { useMusic } from '../../context/MusicContext';
 import { useAuth } from '../../context/AuthContext';
 import { formatTrackRow } from '../../lib/trackFormat';
+import { useRouter } from 'next/navigation';
 
-// Пиксельная кнопка с компактной аккуратной рамкой и анимацией
 function PixelFavoriteButton({ isFavorite, onClick }) {
     const [animate, setAnimate] = useState(false);
 
@@ -28,47 +32,45 @@ function PixelFavoriteButton({ isFavorite, onClick }) {
         <Box
             component="button"
             onClick={handleClick}
-            title={isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'}
             sx={{
                 position: 'absolute',
-                right: 6,
-                bottom: 6,
-                width: '24px',
-                height: '24px',
-                p: 0,
-                m: 0,
+                bottom: 8,
+                right: 8,
+                background: 'none',
                 border: 'none',
-                outline: 'none',
-                cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                bgcolor: isFavorite ? 'rgba(20, 10, 15, 0.75)' : 'rgba(0, 0, 0, 0.55)',
-                backdropFilter: 'blur(3px)',
-                borderRadius: '1px',
-                boxShadow: isFavorite
-                    ? '0 0 0 1px #ff2a6d, 1px 1px 0px rgba(0,0,0,0.85)'
-                    : '0 0 0 1px rgba(255,255,255,0.25), 1px 1px 0px rgba(0,0,0,0.85)',
-                transition: 'all 0.15s ease',
+                cursor: 'pointer',
+                outline: 'none',
+                p: 0,
+                transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 '&:hover': {
-                    bgcolor: 'rgba(0, 0, 0, 0.85)',
-                    transform: 'translateY(-1px)',
-                    boxShadow: '0 0 0 1px #ff2a6d, 1.5px 1.5px 0px rgba(0,0,0,0.9)',
+                    transform: 'scale(1.2)',
                 },
                 '&:active': {
-                    transform: 'translate(1px, 1px)',
-                    boxShadow: '0 0 0 1px #ff2a6d',
+                    transform: 'scale(0.9)',
                 },
-                animation: animate ? 'pixelHeartPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275)' : 'none',
-                '@keyframes pixelHeartPop': {
+                '@keyframes heartPulse': {
                     '0%': { transform: 'scale(1)' },
-                    '35%': { transform: 'scale(1.35) rotate(-8deg)' },
-                    '70%': { transform: 'scale(0.88) rotate(4deg)' },
-                    '100%': { transform: 'scale(1) rotate(0deg)' },
+                    '30%': { transform: 'scale(1.35)' },
+                    '60%': { transform: 'scale(0.85)' },
+                    '100%': { transform: 'scale(1)' },
                 }
             }}
         >
-            <PixelHeartIcon isFavorite={isFavorite} />
+            <Box
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    animation: animate ? 'heartPulse 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275)' : 'none',
+                    filter: isFavorite ? 'drop-shadow(0px 0px 8px #ff4f7b)' : 'drop-shadow(0px 0px 4px rgba(0,0,0,0.7))',
+                    transition: 'filter 0.3s ease',
+                }}
+            >
+                <PixelHeartIcon isFavorite={isFavorite} size={22} />
+            </Box>
         </Box>
     );
 }
@@ -77,7 +79,44 @@ export default function SectionGrid({ title }) {
     const { tracks, setTracks, queue, playTrackNow, addToQueue, favoriteIds, toggleFavorite } = useMusic();
     const { isAuthed, requestLogin } = useAuth();
     const settings = useSettings();
+    const router = useRouter();
     const [pendingTrack, setPendingTrack] = useState(null);
+    const [playlistMenuAnchor, setPlaylistMenuAnchor] = useState(null);
+    const [trackForPlaylist, setTrackForPlaylist] = useState(null);
+    const [playlists, setPlaylists] = useState([]);
+    const [loadingPlaylists, setLoadingPlaylists] = useState(false);
+
+    const loadPlaylists = async () => {
+        if (!isAuthed) return;
+        setLoadingPlaylists(true);
+        try {
+            const res = await api.get("/music/playlists");
+            setPlaylists(res.data.playlists || []);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoadingPlaylists(false);
+        }
+    };
+
+    const openPlaylistMenu = (event, track) => {
+        event.stopPropagation();
+        if (!isAuthed) { requestLogin(); return; }
+        setTrackForPlaylist(track);
+        setPlaylistMenuAnchor(event.currentTarget);
+        loadPlaylists();
+    };
+
+    const addToPlaylist = async (playlistId) => {
+        if (!trackForPlaylist) return;
+        try {
+            await api.post(`/music/playlists/${playlistId}/tracks`, { trackId: trackForPlaylist.id });
+            setPlaylistMenuAnchor(null);
+            setTrackForPlaylist(null);
+        } catch (err) {
+            console.error(err);
+        }
+    };
 
     const handleHeart = (event, track) => {
         event.stopPropagation();
@@ -179,9 +218,17 @@ export default function SectionGrid({ title }) {
                                             <AddRoundedIcon sx={{ fontSize: 18 }} />
                                         </IconButton>
                                     )}
+
+                                    {isAuthed && (
+                                        <IconButton
+                                            onClick={(e) => openPlaylistMenu(e, track)}
+                                            sx={{ position: 'absolute', top: 4, left: 4, color: 'white', bgcolor: 'rgba(0,0,0,0.4)', p: 0.5, '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+                                        >
+                                            <PlaylistPlayRoundedIcon sx={{ fontSize: 18 }} />
+                                        </IconButton>
+                                    )}
                                 </Box>
 
-                                {/* Пиксельная кнопка добавления в избранное */}
                                 <PixelFavoriteButton
                                     isFavorite={favoriteIds.has(track.id)}
                                     onClick={(e) => handleHeart(e, track)}
@@ -189,10 +236,10 @@ export default function SectionGrid({ title }) {
                             </Box>
 
                             <Box sx={{ p: 1.5, width: '100%', boxSizing: 'border-box' }}>
-                                <Typography sx={{ color: 'white', fontSize: '14px', textAlign:'center', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                <Typography sx={{ color: 'white', fontSize: '14px', textAlign: 'center', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                     {track.title}
                                 </Typography>
-                                <Typography sx={{ color: '#939393', fontSize: '12px', whiteSpace: 'nowrap', textAlign:'center', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                <Typography sx={{ color: '#939393', fontSize: '12px', whiteSpace: 'nowrap', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                     {track.author}
                                 </Typography>
                             </Box>
@@ -213,6 +260,31 @@ export default function SectionGrid({ title }) {
                 onConfirm={confirmReplaceQueue}
                 onEnqueue={enqueueInstead}
             />
+
+            <Menu
+                anchorEl={playlistMenuAnchor}
+                open={Boolean(playlistMenuAnchor)}
+                onClose={() => { setPlaylistMenuAnchor(null); setTrackForPlaylist(null); }}
+                sx={{ '& .MuiPaper-root': { bgcolor: '#1e1e1e', border: '1px solid rgba(255,255,255,0.1)' } }}
+            >
+                {loadingPlaylists ? (
+                    <MenuItem disabled sx={{ color: '#fff', px: 2, py: 1 }}>Загрузка...</MenuItem>
+                ) : playlists.length === 0 ? (
+                    <MenuItem disabled sx={{ color: '#fff', px: 2, py: 1 }}>Нет плейлистов. <Button size="small" onClick={() => { setPlaylistMenuAnchor(null); router.push('/playlist/create'); }}>Создать</Button></MenuItem>
+                ) : (
+                    <>
+                        {playlists.map((pl) => (
+                            <MenuItem
+                                key={pl.id}
+                                onClick={() => addToPlaylist(pl.id)}
+                                sx={{ color: '#fff', '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}
+                            >
+                                {pl.title} ({pl.tracks_count || 0})
+                            </MenuItem>
+                        ))}
+                    </>
+                )}
+            </Menu>
         </Box>
     );
 }

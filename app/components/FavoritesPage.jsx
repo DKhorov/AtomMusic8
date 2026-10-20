@@ -4,9 +4,10 @@ import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
 import { useRouter } from 'next/navigation';
-import { ArrowBackRoundedIcon, PlayArrowRoundedIcon, FavoriteRoundedIcon, FavoriteBorderRoundedIcon, HeadphonesRoundedIcon, GraphicEqRoundedIcon, DeleteOutlineRoundedIcon } from './icons';
+import { ArrowBackRoundedIcon, PlayArrowRoundedIcon, HeadphonesRoundedIcon, GraphicEqRoundedIcon, DeleteOutlineRoundedIcon, FavoriteRoundedIcon, FavoriteBorderRoundedIcon } from './icons';
 import Image from 'next/image';
 import TrackCover from './TrackCover';
+import { PixelHeartIcon } from './PixelCover';
 import { useMusic } from '../context/MusicContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -16,6 +17,43 @@ function pluralN(n, one, few, many) {
     if (m10 === 1 && m100 !== 11) return one;
     if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
     return many;
+}
+
+// Пиксельная кнопка избранного с пульсацией
+function PixelFavoriteButton({ isFavorite, onClick }) {
+    const [animate, setAnimate] = useState(false);
+
+    const handleClick = (e) => {
+        setAnimate(true);
+        setTimeout(() => setAnimate(false), 450);
+        onClick(e);
+    };
+
+    return (
+        <Box
+            component="button"
+            onClick={handleClick}
+            sx={{
+                position: 'absolute',
+                bottom: 8,
+                right: 8,
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                border: `2px solid ${isFavorite ? '#ff4f7b' : 'rgba(255,255,255,0.4)'}`,
+                bgcolor: isFavorite ? '#ff4f7b' : 'transparent',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                '&:hover': { transform: 'scale(1.1)' },
+            }}
+        >
+            <PixelHeartIcon isFavorite={isFavorite} size={14} />
+            {animate && <Box sx={{ position: 'absolute', inset: -4, borderRadius: '50%', border: '2px solid #ff4f7b', animation: 'pulseHeart 0.45s ease-out forwards' }} />}
+        </Box>
+    );
 }
 
 export default function FavoritesPage() {
@@ -83,6 +121,23 @@ export default function FavoritesPage() {
                         draggable={false}
                         style={{ objectFit: 'cover' }}
                     />
+                    <Box
+                        sx={{
+                            position: 'absolute',
+                            top: 8,
+                            right: 8,
+                            width: 28,
+                            height: 28,
+                            borderRadius: '50%',
+                            bgcolor: 'rgba(0,0,0,0.5)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backdropFilter: 'blur(4px)',
+                        }}
+                    >
+                        <FavoriteRoundedIcon sx={{ color: '#ff4f7b', fontSize: 16 }} />
+                    </Box>
                 </Box>
                 <Box sx={{ minWidth: 0 }}>
                     <Typography sx={{ fontSize: '13px', color: '#a0a0a0', letterSpacing: '1px', mb: 1 }}>

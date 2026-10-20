@@ -19,9 +19,11 @@ import {
     Heart,
     Headphones,
     Image,
+    MagnifyingGlass,
     Microphone,
     MusicNote,
     Pause,
+    Pencil,
     Play,
     PlayCircle,
     Playlist,
@@ -128,3 +130,6 @@ export const MicRoundedIcon = makeIcon(Microphone, 'bold');
 export const AlbumRoundedIcon = makeIcon(MusicNote, 'bold');
 export const SaveRoundedIcon = makeIcon(CloudArrowUp, 'bold');
 export const DragIndicatorRoundedIcon = makeIcon(DotsSixVertical, 'bold');
+export const EditRoundedIcon = makeIcon(Pencil, 'bold');
+export const ChevronRightRoundedIcon = makeIcon(CaretRight, 'bold');
+export const SearchRoundedIcon = makeIcon(MagnifyingGlass, 'bold');
